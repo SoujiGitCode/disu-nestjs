@@ -31,4 +31,22 @@ export class MailService {
         }
 
     }
+
+    async sendRecoveryEmail(email: string, token: string) {
+        const msg = {
+            to: email,
+            from: 'no-reply@yourdomain.com',
+            subject: 'Password Recovery',
+            text: `Your password recovery token is: ${token}`,
+            html: `<strong>Your password recovery token is: ${token}</strong>`,
+        };
+
+        try {
+            await sgMail.send(msg);
+            this.logger.log(`Password recovery email sent to ${email}`);
+        } catch (error) {
+            this.logger.error(`Failed to send password recovery email to ${email}`, error);
+            throw new Error('Failed to send recovery email.');
+        }
+    }
 }

@@ -30,7 +30,7 @@ export class AuthService {
     // Método privado para manejar usuarios pendientes de verificación
     private async handlePendingUser(user: User): Promise<string> {
         // Generar un nuevo OTP y establecer la expiración
-        const otpCode = this.generateOtp().toString();
+        const otpCode = this.generateOtp();
         user.otpCode = otpCode;
         user.otpExpiration = new Date(Date.now() + 60 * 60 * 1000); // 1 hora de expiración
         await this.userRepository.save(user);
@@ -46,6 +46,7 @@ export class AuthService {
         // Devolver el OTP
         return otpCode;
     }
+
     // Método de registro
     async register(userRegistrationData: RegisterUserDto): Promise<UserResponseDto & { otp: string }> {
         const { email, password, birthdate, gender, role } = userRegistrationData;
@@ -111,7 +112,7 @@ export class AuthService {
 
 
     // Método para verificar el OTP
-    async verifyOtp(verifyOtpData: VerifyOtpDto): Promise<{ success: boolean; message: string }> {
+    async verifyOtp(verifyOtpData: VerifyOtpDto): Promise<{ message: string }> {
         const { email, otp } = verifyOtpData;
 
         // Buscar el usuario por su correo electrónico
@@ -132,14 +133,13 @@ export class AuthService {
         await this.userRepository.save(user);
 
         return {
-            "success": true,
-            "message": "User verified successfully."
+            message: "User verified successfully."
         }
     }
 
     // Método para iniciar sesión
     // Método para iniciar sesión
-    async login(loginData: LoginDto): Promise<{ success: boolean; message: string; data?: any }> {
+    async login(loginData: LoginDto): Promise<{ message: string; data?: any }> {
         const { email, password } = loginData;
 
         // Buscar el usuario por email
@@ -160,7 +160,6 @@ export class AuthService {
             const otpCode = await this.handlePendingUser(user);
 
             return {
-                success: false,
                 message: 'Your account is pending verification. An OTP has been sent to your email.',
                 data: {
                     otp: otpCode,
@@ -171,7 +170,6 @@ export class AuthService {
 
         if (user.status === UserStatus.SUSPENDED) {
             return {
-                success: false,
                 message: 'Your account has been suspended. Please contact support if this is an error.',
                 data: {
                     userStatus: user.status,
@@ -184,7 +182,6 @@ export class AuthService {
         const token = this.jwtService.sign(payload);
 
         return {
-            success: true,
             message: 'Login successful.',
             data: {
                 token,
@@ -193,6 +190,60 @@ export class AuthService {
         };
     }
 
+    // Método para solicitar la recuperación de contraseña
+    async requestPasswordRecovery(email: string): Promise<{ message: string; otp?: string }> {
+        // Buscar el usuario por correo electrónico
+        const user = await this.userRepository.findOne({ where: { email } });
+        if (!user) {
+            throw new NotFoundException('User not found.');
+        }
 
+        // Generar un nuevo OTP y guardar en la base de datos
+        const otpCode = this.generateOtp();
+        user.otpCode = otpCode;
+        user.otpExpiration = new Date(Date.now() + 60 * 60 * 1000); // 1 hora de expiración
+        await this.userRepository.save(user);
+
+        // Enviar el OTP por correo electrónico
+        await this.mailService.sendOtpEmail(user.email, otpCode);
+
+        return {
+            message: 'A recovery email has been sent. Please check your inbox.',
+            otp: otpCode,
+        };
+    }
+
+    // Método para validar el OTP del recovery password
+    async validateOtp(email: string, otpCode: string): Promise<{ message: string }> {
+        const user = await this.userRepository.findOne({ where: { email } });
+        if (!user || user.otpCode !== otpCode || user.otpExpiration < new Date()) {
+            throw new BadRequestException('Invalid or expired OTP.');
+        }
+
+        // Invalidar el OTP después de la validación
+        user.otpCode = null;
+        user.otpExpiration = null;
+        await this.userRepository.save(user);
+
+        return {
+            message: 'OTP is valid. You can now reset your password.',
+        };
+    }
+
+    // Método para restablecer la contraseña
+    async resetPassword(email: string, newPassword: string): Promise<{ message: string }> {
+        const user = await this.userRepository.findOne({ where: { email } });
+        if (!user) {
+            throw new NotFoundException('User not found.');
+        }
+
+        // Actualizar la contraseña
+        user.password = await bcrypt.hash(newPassword, 10);
+        await this.userRepository.save(user);
+
+        return {
+            message: 'Password has been reset successfully.',
+        };
+    }
 
 }

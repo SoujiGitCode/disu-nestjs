@@ -28,6 +28,7 @@
   },
   "include": [
     "src/**/*.ts",
-    "data-source.ts"
+    "data-source.ts",
+    "src/auth/dto/request-password-recovery.dto.ts"
   ]
 }
