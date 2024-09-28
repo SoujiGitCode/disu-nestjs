@@ -1,23 +1,22 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, UseInterceptors } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
+import { RegisterUserDto } from './dto/register-user.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 
-@Controller('auth')
+@Controller('auth') // Ruta base: '/auth'
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
 
     @Post('register')
-    async register(@Body() registerDto: RegisterDto) {
-        return this.authService.register(registerDto);
+    @UseInterceptors(FileInterceptor('')) //habilita la recepción de datos como FormData
+    async register(@Body() createUserDto: RegisterUserDto) {
+        return await this.authService.register(createUserDto);
     }
 
-    @Post('login')
-    async login(@Body() loginDto: LoginDto) {
-        const user = await this.authService.validateUser(
-            loginDto.email,
-            loginDto.password,
-        );
-        return this.authService.login(user);
+    @Post('verify-otp') // Ruta para verificar el OTP
+    @UseInterceptors(FileInterceptor(''))
+    async verifyOtp(@Body() verifyOtpData: VerifyOtpDto) {
+        return await this.authService.verifyOtp(verifyOtpData);
     }
 }

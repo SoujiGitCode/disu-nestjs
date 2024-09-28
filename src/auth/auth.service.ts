@@ -1,55 +1,116 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { UsersService } from '../users/users.service';
-import { RegisterDto } from './dto/register.dto';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User, UserStatus, Gender } from 'src/users/user.entity';
+import { Role } from 'src/roles/role.entity';
+import { RegisterUserDto } from './dto/register-user.dto';
+import { UserResponseDto } from './dto/user-response.dto';
+import { MailService } from 'src/mail/mail.service';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 @Injectable()
 export class AuthService {
     constructor(
-        private readonly usersService: UsersService,
-        private readonly jwtService: JwtService,
+        @InjectRepository(User)
+        private readonly userRepository: Repository<User>,
+        @InjectRepository(Role)
+        private readonly roleRepository: Repository<Role>,
+        private readonly mailService: MailService, // Inyectar MailService
     ) { }
 
-    // Método para registrar un nuevo usuario
-    async register(registerDto: RegisterDto) {
-        const { email, password } = registerDto;
+    // Método para generar un OTP de 5 dígitos
+    private generateOtp(): number {
+        return Math.floor(10000 + Math.random() * 90000);
+    }
+    // Método de registro
+    async register(userRegistrationData: RegisterUserDto): Promise<UserResponseDto & { otp: number }> {
+        const { email, password, birthdate, gender, role } = userRegistrationData;
 
-        const existingUser = await this.usersService.findByEmail(email);
+        // Verificar si el usuario ya existe por su email
+        const existingUser = await this.userRepository.findOne({ where: { email } });
         if (existingUser) {
-            throw new UnauthorizedException('El usuario ya existe');
+            throw new ConflictException('A user with this email already exists.');
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = await this.usersService.create({
-            email,
-            password: hashedPassword,
-        });
+        // Buscar el rol correspondiente en la base de datos usando el ID
+        const roleEntity = await this.roleRepository.findOne({ where: { id: role } });
+        if (!roleEntity) {
+            throw new NotFoundException('Role not found');
+        }
 
-        return { message: 'Usuario registrado correctamente', user: newUser };
+        try {
+            // Hashear la contraseña
+            const hashedPassword = await bcrypt.hash(password, 10);
+
+            // Generar el OTP de 5 dígitos
+            const otpCode = this.generateOtp();
+
+            // Establecer la fecha de expiración del OTP (1 hora a partir de ahora)
+            const otpExpiration = new Date();
+            otpExpiration.setHours(otpExpiration.getHours() + 1);
+
+            // Crear y guardar el nuevo usuario
+            const newUser = this.userRepository.create({
+                email,
+                password: hashedPassword,
+                birthdate,
+                gender: gender || Gender.INDEFINIDO,
+                role: roleEntity,
+                status: UserStatus.PENDING,
+                otpCode: otpCode.toString(), // Guardar el OTP como string
+                otpExpiration: otpExpiration, // Guardar la fecha de expiración
+            });
+
+            const savedUser = await this.userRepository.save(newUser);
+
+            // Enviar correo con OTP
+            await this.mailService.sendOtpEmail(email, otpCode);
+
+            // Construir y devolver el objeto de respuesta
+            return {
+                id: savedUser.id,
+                email: savedUser.email,
+                birthdate: savedUser.birthdate,
+                gender: savedUser.gender,
+                status: savedUser.status,
+                role: savedUser.role.name,
+                otp: otpCode,
+            };
+
+        } catch (error) {
+            if (error.code === '23505') {
+                throw new ConflictException('Email already in use.');
+            }
+            throw new BadRequestException(error.message);
+        }
     }
 
-    // Método para validar un usuario
-    async validateUser(email: string, password: string) {
-        const user = await this.usersService.findByEmail(email);
 
+    // Método para verificar el OTP
+    async verifyOtp(verifyOtpData: VerifyOtpDto): Promise<{ success: boolean; message: string }> {
+        const { email, otp } = verifyOtpData;
+
+        // Buscar el usuario por su correo electrónico
+        const user = await this.userRepository.findOne({ where: { email } });
         if (!user) {
-            throw new UnauthorizedException('Credenciales incorrectas');
+            throw new NotFoundException('User not found.');
         }
 
-        const isPasswordMatching = await bcrypt.compare(password, user.password);
-        if (!isPasswordMatching) {
-            throw new UnauthorizedException('Credenciales incorrectas');
+        // Verificar si el OTP coincide y si no ha expirado
+        if (user.otpCode !== otp || new Date() > user.otpExpiration) {
+            throw new BadRequestException('Invalid or expired OTP code.');
         }
 
-        return user;
-    }
+        // Actualizar el estado del usuario a 'activo' y eliminar el OTP
+        user.status = UserStatus.ACTIVE;
+        user.otpCode = null;
+        user.otpExpiration = null;
+        await this.userRepository.save(user);
 
-    // Método para el login
-    async login(user: any) {
-        const payload = { email: user.email, sub: user.id };
         return {
-            access_token: this.jwtService.sign(payload),
-        };
+            "success": true,
+            "message": "User verified successfully."
+        }
     }
 }
