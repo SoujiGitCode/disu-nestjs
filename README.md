@@ -1,3 +1,32 @@
+# Configuración Inicial
+
+Antes de iniciar la aplicación, asegúrate de completar los siguientes pasos:
+
+## Prerrequisitos
+- Tener **Node.js** instalado en tu máquina local (versión 18 o superior).
+- Tener **PostgreSQL** instalado y en ejecución en tu máquina local.
+
+## Configuración de la Base de Datos
+1. Crear una base de datos en PostgreSQL con el nombre: `disu-nestjs`.
+
+## Creación del Archivo `.env`
+1. En la raíz del proyecto, crea un archivo llamado `.env`.
+2. Copia y pega la siguiente configuración en el archivo `.env`, completando los valores según tu entorno:
+
+```env
+DB_HOST=          # Dirección del host de la base de datos (ej. localhost)
+DB_PORT=          # Puerto de la base de datos (ej. 5432)
+DB_USERNAME=      # Usuario de la base de datos (ej. postgres)
+DB_PASSWORD=      # Contraseña del usuario de la base de datos
+DB_DATABASE=disu-nestjs  # Nombre de la base de datos
+SENDGRID_API_KEY= # API key de SendGrid para el envío de correos electrónicos
+SECRET_KEY_JWT=   # Clave secreta para la firma de los JWT
+
+## Git Clone
+
+https://github.com/SoujiGitCode/disu-nestjs/
+
+
 ## Project setup
 
 ```bash
