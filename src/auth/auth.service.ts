@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcrypt';
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserStatus, Gender } from 'src/users/user.entity';
@@ -8,23 +8,46 @@ import { RegisterUserDto } from './dto/register-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { MailService } from 'src/mail/mail.service';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { LoginDto } from './dto/login.dto';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
     constructor(
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
+        private readonly jwtService: JwtService,
         @InjectRepository(Role)
         private readonly roleRepository: Repository<Role>,
         private readonly mailService: MailService, // Inyectar MailService
     ) { }
 
     // Método para generar un OTP de 5 dígitos
-    private generateOtp(): number {
-        return Math.floor(10000 + Math.random() * 90000);
+    private generateOtp(): string {
+        return Math.floor(10000 + Math.random() * 90000).toString();
+    }
+
+    // Método privado para manejar usuarios pendientes de verificación
+    private async handlePendingUser(user: User): Promise<string> {
+        // Generar un nuevo OTP y establecer la expiración
+        const otpCode = this.generateOtp().toString();
+        user.otpCode = otpCode;
+        user.otpExpiration = new Date(Date.now() + 60 * 60 * 1000); // 1 hora de expiración
+        await this.userRepository.save(user);
+
+        // Enviar OTP al correo electrónico
+        try {
+            await this.mailService.sendOtpEmail(user.email, otpCode);
+        } catch (error) {
+            console.log(error)
+            throw new BadRequestException('Failed to send OTP. Please try again later.');
+        }
+
+        // Devolver el OTP
+        return otpCode;
     }
     // Método de registro
-    async register(userRegistrationData: RegisterUserDto): Promise<UserResponseDto & { otp: number }> {
+    async register(userRegistrationData: RegisterUserDto): Promise<UserResponseDto & { otp: string }> {
         const { email, password, birthdate, gender, role } = userRegistrationData;
 
         // Verificar si el usuario ya existe por su email
@@ -113,4 +136,63 @@ export class AuthService {
             "message": "User verified successfully."
         }
     }
+
+    // Método para iniciar sesión
+    // Método para iniciar sesión
+    async login(loginData: LoginDto): Promise<{ success: boolean; message: string; data?: any }> {
+        const { email, password } = loginData;
+
+        // Buscar el usuario por email
+        const user = await this.userRepository.findOne({ where: { email } });
+        if (!user) {
+            throw new NotFoundException('User not found.');
+        }
+
+        // Verificar la contraseña
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            throw new UnauthorizedException('Invalid credentials.');
+        }
+
+        // Verificar el estado del usuario
+        if (user.status === UserStatus.PENDING) {
+            // Manejar el estado pendiente
+            const otpCode = await this.handlePendingUser(user);
+
+            return {
+                success: false,
+                message: 'Your account is pending verification. An OTP has been sent to your email.',
+                data: {
+                    otp: otpCode,
+                    userStatus: user.status,
+                },
+            };
+        }
+
+        if (user.status === UserStatus.SUSPENDED) {
+            return {
+                success: false,
+                message: 'Your account has been suspended. Please contact support if this is an error.',
+                data: {
+                    userStatus: user.status,
+                },
+            };
+        }
+
+        // Si el usuario está activo, generar el token JWT
+        const payload = { userId: user.id, email: user.email };
+        const token = this.jwtService.sign(payload);
+
+        return {
+            success: true,
+            message: 'Login successful.',
+            data: {
+                token,
+                userStatus: user.status,
+            },
+        };
+    }
+
+
+
 }

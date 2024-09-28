@@ -9,7 +9,7 @@ export class MailService {
         sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     }
 
-    async sendOtpEmail(to: string, otp: number): Promise<void> {
+    async sendOtpEmail(to: string, otp: string): Promise<void> {
         const msg = {
             to,
             from: 'dev.test.reinaldo@gmail.com', // Debe ser un correo verificado en SendGrid

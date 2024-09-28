@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Controller('auth') // Ruta base: '/auth'
 export class AuthController {
@@ -18,5 +19,11 @@ export class AuthController {
     @UseInterceptors(FileInterceptor(''))
     async verifyOtp(@Body() verifyOtpData: VerifyOtpDto) {
         return await this.authService.verifyOtp(verifyOtpData);
+    }
+
+    @Post('login') // Endpoint de login
+    @UseInterceptors(FileInterceptor(''))
+    async login(@Body() loginData: LoginDto) {
+        return await this.authService.login(loginData);
     }
 }
