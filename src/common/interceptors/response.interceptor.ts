@@ -22,7 +22,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
 
                 // Si `data` está definido, lo usamos. Si no, usamos `response` excluyendo `message`
                 const { message: _, ...rest } = response; // Excluir `message` de `data`
-                const data = Object.keys(rest).length > 0 ? rest : '';
+                const data = Object.keys(rest).length > 0 ? rest : null;
 
                 return {
                     success: true,
