@@ -249,4 +249,20 @@ export class AuthService {
         };
     }
 
+    // Método para verificar si un usuario existe
+    async checkUserExists(email: string): Promise<{ message: string; exists: boolean }> {
+        const user = await this.userRepository.findOne({ where: { email } });
+
+        if (user) {
+            return {
+                message: 'Usuario ya registrado.',
+                exists: true,
+            };
+        } else {
+            return {
+                message: 'Usuario no encontrado.',
+                exists: false,
+            };
+        }
+    }
 }

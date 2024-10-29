@@ -42,4 +42,8 @@ export class AuthController {
     async resetPassword(@Body() dto: ResetPasswordDto) {
         return await this.authService.resetPassword(dto.email, dto.newPassword);
     }
+    @Post('check-user-exists')
+    async checkUserExists(@Body('email') email: string) {
+        return await this.authService.checkUserExists(email);
+    }
 }
