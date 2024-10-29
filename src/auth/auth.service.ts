@@ -10,6 +10,7 @@ import { MailService } from 'src/mail/mail.service';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
+import { format } from 'date-fns';
 
 @Injectable()
 export class AuthService {
@@ -40,13 +41,14 @@ export class AuthService {
             await this.mailService.sendOtpEmail(user.email, otpCode);
         } catch (error) {
             console.log(error)
-            throw new BadRequestException('Failed to send OTP. Please try again later.');
+            throw new BadRequestException('No se pudo enviar OTP. Por favor inténtalo de nuevo más tarde.');
         }
 
         // Devolver el OTP
         return otpCode;
     }
 
+    // Método de registro
     // Método de registro
     async register(userRegistrationData: RegisterUserDto): Promise<UserResponseDto & { otp: string }> {
         const { email, password, birthdate, gender, role } = userRegistrationData;
@@ -82,8 +84,8 @@ export class AuthService {
                 gender: gender || Gender.INDEFINIDO,
                 role: roleEntity,
                 status: UserStatus.PENDING,
-                otpCode: otpCode.toString(), // Guardar el OTP como string
-                otpExpiration: otpExpiration, // Guardar la fecha de expiración
+                otpCode: otpCode.toString(),
+                otpExpiration: otpExpiration,
             });
 
             const savedUser = await this.userRepository.save(newUser);
@@ -91,11 +93,11 @@ export class AuthService {
             // Enviar correo con OTP
             await this.mailService.sendOtpEmail(email, otpCode);
 
-            // Construir y devolver el objeto de respuesta
+            // Transformar el formato de la fecha antes de devolverla en la respuesta
             return {
                 id: savedUser.id,
                 email: savedUser.email,
-                birthdate: savedUser.birthdate,
+                birthdate: format(new Date(savedUser.birthdate), 'yyyy-MM-dd'), // Formato de fecha ajustado
                 gender: savedUser.gender,
                 status: savedUser.status,
                 role: savedUser.role.name,
@@ -111,6 +113,7 @@ export class AuthService {
     }
 
 
+
     // Método para verificar el OTP
     async verifyOtp(verifyOtpData: VerifyOtpDto): Promise<{ message: string }> {
         const { email, otp } = verifyOtpData;
@@ -118,12 +121,12 @@ export class AuthService {
         // Buscar el usuario por su correo electrónico
         const user = await this.userRepository.findOne({ where: { email } });
         if (!user) {
-            throw new NotFoundException('User not found.');
+            throw new NotFoundException('Usuario no encontrado.');
         }
 
         // Verificar si el OTP coincide y si no ha expirado
         if (user.otpCode !== otp || new Date() > user.otpExpiration) {
-            throw new BadRequestException('Invalid or expired OTP code.');
+            throw new BadRequestException('Código inválido o caducado.');
         }
 
         // Actualizar el estado del usuario a 'activo' y eliminar el OTP
@@ -133,7 +136,7 @@ export class AuthService {
         await this.userRepository.save(user);
 
         return {
-            message: "User verified successfully."
+            message: "Usuario verificada con éxito."
         }
     }
 
@@ -145,13 +148,13 @@ export class AuthService {
         // Buscar el usuario por email
         const user = await this.userRepository.findOne({ where: { email } });
         if (!user) {
-            throw new NotFoundException('User not found.');
+            throw new NotFoundException('Usuario no encontrado.');
         }
 
         // Verificar la contraseña
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-            throw new UnauthorizedException('Invalid credentials.');
+            throw new UnauthorizedException('Credenciales Invalidas.');
         }
 
         // Verificar el estado del usuario
@@ -160,7 +163,7 @@ export class AuthService {
             const otpCode = await this.handlePendingUser(user);
 
             return {
-                message: 'Your account is pending verification. An OTP has been sent to your email.',
+                message: 'Tu cuenta está pendiente de verificación. Se ha enviado una OTP a su correo electrónico.',
                 data: {
                     otp: otpCode,
                     userStatus: user.status,
@@ -170,7 +173,7 @@ export class AuthService {
 
         if (user.status === UserStatus.SUSPENDED) {
             return {
-                message: 'Your account has been suspended. Please contact support if this is an error.',
+                message: 'Tu cuenta ha sido suspendida. Comuníquese con el soporte si se trata de un error.',
                 data: {
                     userStatus: user.status,
                 },
@@ -182,7 +185,7 @@ export class AuthService {
         const token = this.jwtService.sign(payload);
 
         return {
-            message: 'Login successful.',
+            message: 'Inicio de sesión exitoso.',
             data: {
                 token,
                 userStatus: user.status,
@@ -195,7 +198,7 @@ export class AuthService {
         // Buscar el usuario por correo electrónico
         const user = await this.userRepository.findOne({ where: { email } });
         if (!user) {
-            throw new NotFoundException('User not found.');
+            throw new NotFoundException('Usuario no encontrado.');
         }
 
         // Generar un nuevo OTP y guardar en la base de datos
@@ -208,7 +211,7 @@ export class AuthService {
         await this.mailService.sendOtpEmail(user.email, otpCode);
 
         return {
-            message: 'A recovery email has been sent. Please check your inbox.',
+            message: 'Se ha enviado un correo electrónico de recuperación. Por favor revisa tu bandeja de entrada.',
             otp: otpCode,
         };
     }
@@ -217,7 +220,7 @@ export class AuthService {
     async validateOtp(email: string, otpCode: string): Promise<{ message: string }> {
         const user = await this.userRepository.findOne({ where: { email } });
         if (!user || user.otpCode !== otpCode || user.otpExpiration < new Date()) {
-            throw new BadRequestException('Invalid or expired OTP.');
+            throw new BadRequestException('Código inválido o caducado.');
         }
 
         // Invalidar el OTP después de la validación
@@ -226,7 +229,7 @@ export class AuthService {
         await this.userRepository.save(user);
 
         return {
-            message: 'OTP is valid. You can now reset your password.',
+            message: 'Código validado. Ahora puedes restablecer tu contraseña',
         };
     }
 
@@ -234,7 +237,7 @@ export class AuthService {
     async resetPassword(email: string, newPassword: string): Promise<{ message: string }> {
         const user = await this.userRepository.findOne({ where: { email } });
         if (!user) {
-            throw new NotFoundException('User not found.');
+            throw new NotFoundException('Usuario no encontrado.');
         }
 
         // Actualizar la contraseña
@@ -242,7 +245,7 @@ export class AuthService {
         await this.userRepository.save(user);
 
         return {
-            message: 'Password has been reset successfully.',
+            message: 'La contraseña se ha restablecido correctamente.',
         };
     }
 
