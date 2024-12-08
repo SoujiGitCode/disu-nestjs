@@ -49,18 +49,19 @@ export class AuthService {
     }
 
     // Método de registro
-    // Método de registro
-    async register(userRegistrationData: RegisterUserDto): Promise<UserResponseDto & { otp: string }> {
+    async register(userRegistrationData: RegisterUserDto): Promise<UserResponseDto> {
         const { email, password, birthdate, gender, role } = userRegistrationData;
 
         // Verificar si el usuario ya existe por su email
         const existingUser = await this.userRepository.findOne({ where: { email } });
         if (existingUser) {
-            throw new ConflictException('A user with this email already exists.');
+            throw new ConflictException('Ya existe un usuario con este email');
         }
+        // Buscar el rol correspondiente en la base de datos usando el ID, o asignar el rol con ID 1 por defecto
+        const roleEntity = role
+            ? await this.roleRepository.findOne({ where: { id: role } })
+            : await this.roleRepository.findOne({ where: { id: 1 } });
 
-        // Buscar el rol correspondiente en la base de datos usando el ID
-        const roleEntity = await this.roleRepository.findOne({ where: { id: role } });
         if (!roleEntity) {
             throw new NotFoundException('Role not found');
         }
@@ -80,11 +81,10 @@ export class AuthService {
             const newUser = this.userRepository.create({
                 email,
                 password: hashedPassword,
-                birthdate,
+                birthdate: format(new Date(birthdate), 'dd-MM-yyyy'),
                 gender: gender || Gender.INDEFINIDO,
                 role: roleEntity,
                 status: UserStatus.PENDING,
-                otpCode: otpCode.toString(),
                 otpExpiration: otpExpiration,
             });
 
@@ -95,24 +95,25 @@ export class AuthService {
 
             // Transformar el formato de la fecha antes de devolverla en la respuesta
             return {
-                id: savedUser.id,
-                email: savedUser.email,
-                birthdate: format(new Date(savedUser.birthdate), 'yyyy-MM-dd'), // Formato de fecha ajustado
-                gender: savedUser.gender,
-                status: savedUser.status,
-                role: savedUser.role.name,
-                otp: otpCode,
+                message: 'Usuario registrado correctamente',
+                data: {
+                    id: savedUser.id,
+                    email: savedUser.email,
+                    birthdate: format(new Date(savedUser.birthdate), 'dd-MM-yyyy'), // Formato de fecha ajustado
+                    name: savedUser.name,
+                    gender: savedUser.gender,
+                    status: savedUser.status,
+                    role: savedUser.role.name,
+                }
             };
 
         } catch (error) {
             if (error.code === '23505') {
-                throw new ConflictException('Email already in use.');
+                throw new ConflictException('Dirección de correo ya registrada.');
             }
             throw new BadRequestException(error.message);
         }
     }
-
-
 
     // Método para verificar el OTP
     async verifyOtp(verifyOtpData: VerifyOtpDto): Promise<{ message: string }> {
@@ -141,7 +142,6 @@ export class AuthService {
     }
 
     // Método para iniciar sesión
-    // Método para iniciar sesión
     async login(loginData: LoginDto): Promise<{ message: string; data?: any }> {
         const { email, password } = loginData;
 
@@ -160,12 +160,11 @@ export class AuthService {
         // Verificar el estado del usuario
         if (user.status === UserStatus.PENDING) {
             // Manejar el estado pendiente
-            const otpCode = await this.handlePendingUser(user);
+            await this.handlePendingUser(user);
 
             return {
                 message: 'Tu cuenta está pendiente de verificación. Se ha enviado una OTP a su correo electrónico.',
                 data: {
-                    otp: otpCode,
                     userStatus: user.status,
                 },
             };
@@ -212,7 +211,6 @@ export class AuthService {
 
         return {
             message: 'Se ha enviado un correo electrónico de recuperación. Por favor revisa tu bandeja de entrada.',
-            otp: otpCode,
         };
     }
 
@@ -250,18 +248,22 @@ export class AuthService {
     }
 
     // Método para verificar si un usuario existe
-    async checkUserExists(email: string): Promise<{ message: string; exists: boolean }> {
+    async checkUserExists(email: string): Promise<{ message: string; data?: any }> {
         const user = await this.userRepository.findOne({ where: { email } });
 
         if (user) {
             return {
                 message: 'Usuario ya registrado.',
-                exists: true,
+                data: {
+                    exists: true,
+                },
             };
         } else {
             return {
                 message: 'Usuario no encontrado.',
-                exists: false,
+                data: {
+                    exists: true,
+                },
             };
         }
     }

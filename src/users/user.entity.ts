@@ -12,6 +12,7 @@ export enum UserStatus {
     PENDING = 'pendiente',
     ACTIVE = 'activo',
     SUSPENDED = 'suspendido',
+    DELETED = 'eliminado'
 }
 
 
@@ -39,6 +40,9 @@ export class User {
 
     @Column()
     gender: string;
+
+    @Column({ type: 'varchar', default: 'noNameAsigned' })
+    name: string;
 
     @Column({ default: false })
     isConfirmed: boolean;

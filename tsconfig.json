@@ -17,6 +17,9 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": false,
+    "typeRoots": [
+      "node_modules/@types"
+    ],
     "paths": {
       "@src/*": [
         "src/*"

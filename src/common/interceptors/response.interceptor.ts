@@ -17,13 +17,13 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
     intercept(context: ExecutionContext, next: CallHandler<T>): Observable<any> {
         return next.handle().pipe(
             map((response: ApiResponse) => {
-                // Separar `message` si existe, o dejarlo como string vacío
+                // Obtener `message` si existe, o dejarlo como string vacío
                 const message = response.message ?? '';
 
-                // Si `data` está definido, lo usamos. Si no, usamos `response` excluyendo `message`
-                const { message: _, ...rest } = response; // Excluir `message` de `data`
-                const data = Object.keys(rest).length > 0 ? rest : null;
+                // Si `data` está definido explícitamente, úsalo; si no, devuelve `null` para evitar anidamientos
+                const data = response.data !== undefined ? response.data : null;
 
+                // Retornar la estructura final
                 return {
                     success: true,
                     message,

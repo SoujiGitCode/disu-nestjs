@@ -1,8 +1,13 @@
 export class UserResponseDto {
-    id: number;
-    email: string;
-    birthdate: Date | string;
-    gender: string;
-    status: string;
-    role: string;
+    message: string;
+    data: {
+        id: number;
+        email: string;
+        birthdate: Date | string;
+        gender: string;
+        name: string;
+        status: string;
+        role: string;
+    }
+
 }

@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, IsDate, IsOptional, MinLength, Matches } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, IsDate, IsOptional, MinLength, Matches, isNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class RegisterUserDto {
@@ -14,6 +14,10 @@ export class RegisterUserDto {
     password: string;
 
     @IsNotEmpty()
+    @IsString()
+    name: string;
+
+    @IsNotEmpty()
     @IsDate()
     @Type(() => Date) // Transforma el valor a un tipo Date
     birthdate: Date;
@@ -22,6 +26,6 @@ export class RegisterUserDto {
     @IsString()
     gender: string; // No validamos aquí los valores específicos, se hará en el servicio
 
-    @IsNotEmpty()
+    @IsOptional()
     role: number; // Esto es el ID del rol; asumimos que se valida en el servicio
 }
