@@ -82,12 +82,12 @@ export class BusinessesService {
   }
 
 
-  async findOne(id: number): Promise<Business> {
-    const business = await this.businessesRepository.findOne({ where: { id } });
-    if (!business) {
-      throw new BadRequestException(`Business with ID ${id} not found`);
+  async findOne(id: number): Promise<Business | null> {
+    if (!id || isNaN(Number(id))) {
+      throw new Error(`ID inválido recibido en findOne: ${id}`);
     }
-    return business;
+
+    return this.businessesRepository.findOne({ where: { id } });
   }
 
 

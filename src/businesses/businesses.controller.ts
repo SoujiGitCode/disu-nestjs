@@ -10,19 +10,18 @@ import {
   Put,
   Param,
   Delete,
-  Patch,
   ParseIntPipe,
+  NotFoundException,
+  Query,
 } from '@nestjs/common';
-import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import { BusinessesService } from './businesses.service'; // Importar el servicio
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { UpdateBusinessDto } from './dto/update-business.dto';
-import { FastCreateBusinessDto } from './dto/fast-create-business-dto';
 
 @Controller('businesses')
-@UseInterceptors(FileInterceptor(''))//habilita la recepción de datos como FormData para todas las rutas!
 export class BusinessesController {
   private readonly logger = new Logger(BusinessesController.name);
 
@@ -69,14 +68,24 @@ export class BusinessesController {
     }
   }
 
-  @Get()
+  @Get('find-all')
   async findAll() {
     return this.businessService.findAll();
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: number) {
-    return this.businessService.findOne(id);
+  async findOne(@Query('id', ParseIntPipe) id: number) {
+    const business = await this.businessService.findOne(id);
+
+    if (!business) {
+      throw new NotFoundException(`Negocio con ID ${id} no encontrado.`);
+    }
+
+    return {
+      success: true,
+      message: 'Negocio encontrado correctamente.',
+      data: business,
+    };
   }
 
   @Put(':id')
@@ -92,22 +101,5 @@ export class BusinessesController {
     return this.businessService.delete(id);
   }
 
-  @Post('fast-create')
-  async fastCreate(@Body() createBusinessDto: FastCreateBusinessDto) {
-    return this.businessService.fastCreate(createBusinessDto);
-  }
-
-  @Patch('fast-update/:id')
-  async fastUpdate(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateBusinessDto: UpdateBusinessDto,
-  ) {
-    const result = await this.businessService.fastUpdate(id, updateBusinessDto);
-    return {
-      success: true,
-      message: 'Negocio actualizado exitosamente.',
-      data: result,
-    };
-  }
 
 }

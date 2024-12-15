@@ -25,7 +25,7 @@ import { join } from 'path';
       isGlobal: true,
     }),
     TypeOrmModule.forRoot({
-      // logging: true,
+      logging: true,
       type: 'postgres',
       host: process.env.DB_HOST,
       port: parseInt(process.env.DB_PORT, 10),
