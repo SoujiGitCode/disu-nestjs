@@ -14,14 +14,16 @@ import {
   NotFoundException,
   Query,
 } from '@nestjs/common';
-import { AnyFilesInterceptor } from '@nestjs/platform-express';
+import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import { BusinessesService } from './businesses.service'; // Importar el servicio
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { UpdateBusinessDto } from './dto/update-business.dto';
+import { FastCreateBusinessDto } from './dto/fast-create-business-dto';
 
 @Controller('businesses')
+@UseInterceptors(FileInterceptor(''))//habilita la recepción de datos como FormData para todas las rutas!
 export class BusinessesController {
   private readonly logger = new Logger(BusinessesController.name);
 
@@ -73,7 +75,7 @@ export class BusinessesController {
     return this.businessService.findAll();
   }
 
-  @Get(':id')
+  @Get()
   async findOne(@Query('id', ParseIntPipe) id: number) {
     const business = await this.businessService.findOne(id);
 
@@ -88,17 +90,49 @@ export class BusinessesController {
     };
   }
 
-  @Put(':id')
-  async update(
-    @Param('id') id: number,
-    @Body() updateBusinessDto: UpdateBusinessDto,
-  ) {
-    return this.businessService.update(id, updateBusinessDto);
-  }
 
   @Delete(':id')
   async remove(@Param('id') id: number) {
     return this.businessService.delete(id);
+  }
+
+  @Post('fast-create')
+  async fastCreate(
+    @Body() fastCreateBusinessDto: FastCreateBusinessDto,
+  ) {
+    try {
+      const result = await this.businessService.fastCreate(fastCreateBusinessDto);
+
+      return {
+        success: true,
+        message: 'Negocio creado exitosamente.',
+        data: result.data,
+      };
+    } catch (error) {
+      throw new BadRequestException(error.message || 'Error al crear el negocio.');
+    }
+  }
+
+  // Fast-update
+  @Put('fast-update/:id')
+  async fastUpdate(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateBusinessDto: UpdateBusinessDto,
+  ) {
+    try {
+      const result = await this.businessService.fastUpdate(id, updateBusinessDto);
+
+      return {
+        success: true,
+        message: 'Negocio actualizado exitosamente.',
+        data: result.data,
+      };
+    } catch (error) {
+      if (error.message === 'Negocio no encontrado.') {
+        throw new NotFoundException(error.message);
+      }
+      throw new BadRequestException(error.message || 'Error al actualizar el negocio.');
+    }
   }
 
 
