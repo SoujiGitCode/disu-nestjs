@@ -262,7 +262,7 @@ export class AuthService {
             return {
                 message: 'Usuario no encontrado.',
                 data: {
-                    exists: true,
+                    exists: false,
                 },
             };
         }
