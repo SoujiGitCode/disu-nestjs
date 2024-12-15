@@ -96,7 +96,7 @@ export class BusinessesController {
     return this.businessService.delete(id);
   }
 
-  @Post('fast-create')
+  @Post('fastcreate')
   async fastCreate(
     @Body() fastCreateBusinessDto: FastCreateBusinessDto,
   ) {
