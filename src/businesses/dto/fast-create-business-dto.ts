@@ -1,16 +1,7 @@
 import { Transform } from 'class-transformer';
-import {
-    IsString,
-    IsOptional,
-    IsEmail,
-    IsNumber,
-    IsBase64,
-    MaxLength,
-    Min,
-    Max,
-} from 'class-validator';
+import { IsOptional, IsString, MaxLength, IsUrl, IsNumber, Min, Max, IsEmail } from 'class-validator';
 
-export class CreateBusinessDto {
+export class FastCreateBusinessDto {
     @IsString()
     @MaxLength(255)
     name: string;
@@ -49,28 +40,35 @@ export class CreateBusinessDto {
     @IsEmail()
     notificationsEmailAddress?: string;
 
+    // Logo como URL individual
     @IsOptional()
-    // @IsBase64()
-    logo?: string; // Logo en formato base64
+    @IsString()
+    @IsUrl()
+    logo?: string;
 
-    // Imágenes individuales (5 campos opcionales)
+    // Imágenes como URLs individuales
     @IsOptional()
-    // @IsBase64()
+    @IsString()
+    @IsUrl()
     image1?: string;
 
     @IsOptional()
-    // @IsBase64()
+    @IsString()
+    @IsUrl()
     image2?: string;
 
     @IsOptional()
-    // @IsBase64()
+    @IsString()
+    @IsUrl()
     image3?: string;
 
     @IsOptional()
-    // @IsBase64()
+    @IsString()
+    @IsUrl()
     image4?: string;
 
     @IsOptional()
-    // @IsBase64()
+    @IsString()
+    @IsUrl()
     image5?: string;
 }

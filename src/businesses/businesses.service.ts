@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Repository } from 'typeorm';
@@ -7,6 +7,8 @@ import { Business } from './business.entity';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { ConfigService } from '@nestjs/config';
+import { validate } from 'class-validator';
+import { FastCreateBusinessDto } from './dto/fast-create-business-dto';
 
 @Injectable()
 export class BusinessesService {
@@ -60,8 +62,8 @@ export class BusinessesService {
   }
 
   async findAll(): Promise<{ message: string; data: Business[] }> {
-    // Obtener la URL base desde el archivo .env
-    const baseUrl = this.configService.get<string>('API_BASE_URL');
+    // // Obtener la URL base desde el archivo .env
+    // const baseUrl = this.configService.get<string>('API_BASE_URL');
 
     // Obtener todos los negocios
     const businesses = await this.businessesRepository.find();
@@ -69,8 +71,8 @@ export class BusinessesService {
     // Modificar las URLs relativas a completas
     const sanitizedBusinesses = businesses.map((business) => ({
       ...business,
-      logoUrl: `${baseUrl}${business.logoUrl}`, // Concatenar dominio base
-      imageUrls: business.imageUrls.map((url) => `${baseUrl}${url}`), // Procesar array de imágenes
+      logoUrl: `${business.logoUrl}`, // Concatenar dominio base
+      imageUrls: business.imageUrls.map((url) => `${url}`), // Procesar array de imágenes
     }));
 
     return {
@@ -90,9 +92,8 @@ export class BusinessesService {
 
 
   async update(id: number, updateBusinessDto: UpdateBusinessDto): Promise<Business> {
-    const business = await this.findOne(id); // Llama a `findOne` para verificar si existe el negocio
+    const business = await this.findOne(id);
 
-    // Filtrar solo las propiedades que tienen valores definidos
     const updatedFields = Object.entries(updateBusinessDto).reduce((acc, [key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         acc[key] = value;
@@ -100,18 +101,112 @@ export class BusinessesService {
       return acc;
     }, {});
 
-    // Aplicar solo los campos actualizados al negocio existente
     Object.assign(business, updatedFields);
 
-    // Opcional: Maneja la lógica de actualizar imágenes o archivos relacionados aquí si corresponde
+    // Validar la entidad después de actualizarla
+    const errors = await validate(business);
+    if (errors.length > 0) {
+      throw new BadRequestException({
+        message: 'Validation failed',
+        errors: errors.map((err) => ({
+          property: err.property,
+          constraints: err.constraints,
+        })),
+      });
+    }
 
-    return this.businessesRepository.save(business); // Guarda los cambios
+    return this.businessesRepository.save(business);
+  }
+
+  async delete(id: number): Promise<{ success: boolean; message: string }> {
+    const business = await this.findOne(id); // Verificar si el negocio existe
+
+    if (!business) {
+      throw new NotFoundException('Negocio no encontrado.');
+    }
+
+    await this.businessesRepository.delete(id); // Eliminar el negocio
+
+    return {
+      success: true,
+      message: 'Negocio eliminado exitosamente.',
+    };
+  }
+
+  async fastCreate(createBusinessDto: FastCreateBusinessDto): Promise<{ success: boolean; message: string; data: Business }> {
+    const { image1, image2, image3, image4, image5, ...businessData } = createBusinessDto;
+
+    // Crear un negocio con los datos proporcionados
+    const business = this.businessesRepository.create({
+      ...businessData,
+      logoUrl: createBusinessDto.logo || null,
+      imageUrls: [image1, image2, image3, image4, image5].filter((url) => url !== undefined), // Filtrar imágenes definidas
+    });
+
+    // Guardar el negocio en la base de datos
+    const savedBusiness = await this.businessesRepository.save(business);
+
+    // Devolver una respuesta clara
+    return {
+      success: true,
+      message: 'Negocio creado exitosamente.',
+      data: savedBusiness,
+    };
   }
 
 
-  async remove(id: number): Promise<void> {
-    const business = await this.findOne(id); // Verifica que el negocio exista
-    await this.businessesRepository.remove(business); // Elimina el negocio de la base de datos
+  async fastUpdate(
+    id: number,
+    updateBusinessDto: UpdateBusinessDto,
+  ): Promise<{ success: boolean; message: string; data: Business }> {
+    const { delete_logo, delete_images, image1, image2, image3, image4, image5, ...businessData } = updateBusinessDto;
+
+    // Buscar el negocio existente
+    const business = await this.findOne(id);
+
+    if (!business) {
+      throw new Error('Negocio no encontrado.');
+    }
+
+    // Limpiar logo si se solicita
+    if (delete_logo) {
+      business.logoUrl = null;
+    }
+
+    // Limpiar imágenes si se solicita
+    if (delete_images) {
+      business.imageUrls = [];
+    } else {
+      // Actualizar imágenes específicas
+      const updatedImages = [...business.imageUrls]; // Copia las imágenes existentes
+      const newImages = [image1, image2, image3, image4, image5];
+      newImages.forEach((url, index) => {
+        if (url !== undefined && url !== null && url !== '') {
+          updatedImages[index] = url; // Actualiza solo los índices específicos
+        }
+      });
+      business.imageUrls = updatedImages;
+    }
+
+    // Filtrar solo las propiedades con valores válidos y aplicarlas
+    Object.entries(businessData).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        business[key] = value;
+      }
+    });
+
+    // Guardar los cambios
+    const updatedBusiness = await this.businessesRepository.save(business);
+
+    // Devolver la respuesta
+    return {
+      success: true,
+      message: 'Negocio actualizado exitosamente.',
+      data: updatedBusiness,
+    };
   }
+
+
+
 
 }

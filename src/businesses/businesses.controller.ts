@@ -10,15 +10,19 @@ import {
   Put,
   Param,
   Delete,
+  Patch,
+  ParseIntPipe,
 } from '@nestjs/common';
-import { AnyFilesInterceptor } from '@nestjs/platform-express';
+import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import { BusinessesService } from './businesses.service'; // Importar el servicio
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { UpdateBusinessDto } from './dto/update-business.dto';
+import { FastCreateBusinessDto } from './dto/fast-create-business-dto';
 
 @Controller('businesses')
+@UseInterceptors(FileInterceptor(''))//habilita la recepción de datos como FormData para todas las rutas!
 export class BusinessesController {
   private readonly logger = new Logger(BusinessesController.name);
 
@@ -85,8 +89,25 @@ export class BusinessesController {
 
   @Delete(':id')
   async remove(@Param('id') id: number) {
-    return this.businessService.remove(id);
+    return this.businessService.delete(id);
   }
 
+  @Post('fast-create')
+  async fastCreate(@Body() createBusinessDto: FastCreateBusinessDto) {
+    return this.businessService.fastCreate(createBusinessDto);
+  }
+
+  @Patch('fast-update/:id')
+  async fastUpdate(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateBusinessDto: UpdateBusinessDto,
+  ) {
+    const result = await this.businessService.fastUpdate(id, updateBusinessDto);
+    return {
+      success: true,
+      message: 'Negocio actualizado exitosamente.',
+      data: result,
+    };
+  }
 
 }
