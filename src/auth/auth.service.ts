@@ -23,11 +23,10 @@ export class AuthService {
         private readonly mailService: MailService, // Inyectar MailService
     ) { }
 
-    // Método para generar un OTP de 5 dígitos
+    // Método para generar un OTP de 6 dígitos
     private generateOtp(): string {
-        return Math.floor(10000 + Math.random() * 90000).toString();
+        return Math.floor(100000 + Math.random() * 900000).toString();
     }
-
     // Método privado para manejar usuarios pendientes de verificación
     private async handlePendingUser(user: User): Promise<string> {
         // Generar un nuevo OTP y establecer la expiración
@@ -50,7 +49,7 @@ export class AuthService {
 
     // Método de registro
     async register(userRegistrationData: RegisterUserDto): Promise<UserResponseDto> {
-        const { email, password, birthdate, gender, role } = userRegistrationData;
+        const { email, password, birthdate, gender, role, name, lastName } = userRegistrationData;
 
         // Verificar si el usuario ya existe por su email
         const existingUser = await this.userRepository.findOne({ where: { email } });
@@ -85,6 +84,9 @@ export class AuthService {
                 gender: gender || Gender.INDEFINIDO,
                 role: roleEntity,
                 status: UserStatus.PENDING,
+                otpCode: otpCode,
+                name: name,
+                lastName: lastName,
                 otpExpiration: otpExpiration,
             });
 
@@ -95,12 +97,13 @@ export class AuthService {
 
             // Transformar el formato de la fecha antes de devolverla en la respuesta
             return {
-                message: 'Usuario registrado correctamente',
+                message: 'Usuario registrado correctamente!',
                 data: {
                     id: savedUser.id,
                     email: savedUser.email,
                     birthdate: format(new Date(savedUser.birthdate), 'dd-MM-yyyy'), // Formato de fecha ajustado
                     name: savedUser.name,
+                    lastName: savedUser.lastName,
                     gender: savedUser.gender,
                     status: savedUser.status,
                     role: savedUser.role.name,

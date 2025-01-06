@@ -6,6 +6,7 @@ export class UserResponseDto {
         birthdate: Date | string;
         gender: string;
         name: string;
+        lastName: string;
         status: string;
         role: string;
     }

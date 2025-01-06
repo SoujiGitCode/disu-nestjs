@@ -44,6 +44,9 @@ export class User {
     @Column({ type: 'varchar', default: 'noNameAsigned' })
     name: string;
 
+    @Column({ type: 'varchar', default: 'undefinedLastName' })
+    lastName: string;
+
     @Column({ default: false })
     isConfirmed: boolean;
 
