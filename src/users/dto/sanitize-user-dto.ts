@@ -11,6 +11,9 @@ export class SanitizedUserDto {
     name: string;
 
     @Expose()
+    lastName: string;
+
+    @Expose()
     birthdate: string;
 
     @Expose()

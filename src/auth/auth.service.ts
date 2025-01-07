@@ -27,6 +27,30 @@ export class AuthService {
     private generateOtp(): string {
         return Math.floor(100000 + Math.random() * 900000).toString();
     }
+
+    // Método para generar JWT
+    private generateToken(payload: any): string {
+        return this.jwtService.sign(payload, {
+            expiresIn: '365d', // Configuración del tiempo de expiración
+        });
+    }
+
+    // Método para Validar JWT
+    async validateToken(token: string): Promise<any> {
+        try {
+            return this.jwtService.verify(token); // Verifica la firma y expiración del token
+        } catch (error) {
+            console.error('Error al validar token:', error);
+            if (error.name === 'TokenExpiredError') {
+                throw new UnauthorizedException('El token ha expirado.');
+            } else if (error.name === 'JsonWebTokenError') {
+                throw new UnauthorizedException('El token es inválido.');
+            } else {
+                throw new UnauthorizedException('No se pudo validar el token.');
+            }
+        }
+    }
+
     // Método privado para manejar usuarios pendientes de verificación
     private async handlePendingUser(user: User): Promise<string> {
         // Generar un nuevo OTP y establecer la expiración
@@ -182,10 +206,10 @@ export class AuthService {
             };
         }
 
+
         // Si el usuario está activo, generar el token JWT
         const payload = { userId: user.id, email: user.email };
-        const token = this.jwtService.sign(payload);
-
+        const token = this.generateToken(payload);
         return {
             message: 'Inicio de sesión exitoso.',
             data: {
