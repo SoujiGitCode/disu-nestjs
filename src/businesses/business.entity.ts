@@ -24,7 +24,7 @@ export class Business {
     discount?: number;
 
     @Column({ type: 'simple-array', nullable: true })
-    paymentMethods?: string[]; // Array de métodos de pago
+    paymentMethods?: string[]; // Array para los métodos de pago
 
     @Column({ type: 'varchar', length: 255, nullable: true })
     notificationsEmailAddress?: string; // Email para notificaciones opcional
@@ -34,4 +34,14 @@ export class Business {
 
     @Column({ type: 'simple-array', nullable: true })
     imageUrls?: string[]; // Array de URLs para las imágenes adicionales
+
+    @Column({ type: 'time', nullable: true })
+    openingHour?: string; // Hora de apertura
+
+    @Column({ type: 'time', nullable: true })
+    closingHour?: string; // Hora de cierre
+
+    @Column({ type: 'simple-array', nullable: true })
+    openingDays?: string[]; // Array para los días de apertura
+
 }

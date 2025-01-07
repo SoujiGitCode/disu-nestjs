@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsOptional, IsString, MaxLength, IsUrl, IsNumber, Min, Max, IsEmail } from 'class-validator';
+import { IsOptional, IsString, MaxLength, IsUrl, IsNumber, Min, Max, IsEmail, IsArray } from 'class-validator';
 
 export class FastCreateBusinessDto {
     @IsString()
@@ -33,6 +33,20 @@ export class FastCreateBusinessDto {
     discount?: number;
 
     @IsOptional()
+    @IsArray()
+    @Transform(({ value }) => {
+        // Verificar si es una cadena en formato de array
+        if (typeof value === 'string') {
+            try {
+                const parsed = value.replace(/[\[\]']/g, '').split(',').map((v) => v.trim());
+                if (!Array.isArray(parsed)) throw new Error();
+                return parsed;
+            } catch {
+                throw new Error('Formato inválido para paymentMethods. Debe ser un array o cadena en formato [item1, item2].');
+            }
+        }
+        return value;
+    })
     @IsString({ each: true })
     paymentMethods?: string[];
 
@@ -71,4 +85,30 @@ export class FastCreateBusinessDto {
     @IsString()
     @IsUrl()
     image5?: string;
+
+    @IsOptional()
+    @IsString() // Horas de apertura como string (e.g., "08:00:00")
+    openingHour?: string;
+
+    @IsOptional()
+    @IsString() // Horas de cierre como string (e.g., "18:00:00")
+    closingHour?: string;
+
+    @IsOptional()
+    @IsArray()
+    @Transform(({ value }) => {
+        // Verificar si es una cadena en formato de array
+        if (typeof value === 'string') {
+            try {
+                const parsed = value.replace(/[\[\]']/g, '').split(',').map((v) => v.trim());
+                if (!Array.isArray(parsed)) throw new Error();
+                return parsed;
+            } catch {
+                throw new Error('Formato inválido para openingDays. Debe ser un array o cadena en formato [item1, item2].');
+            }
+        }
+        return value;
+    })
+    @IsString({ each: true })
+    openingDays?: string[];
 }
