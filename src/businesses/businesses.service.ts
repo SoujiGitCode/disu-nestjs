@@ -172,8 +172,8 @@ export class BusinessesService {
     // Limpiar imágenes si se solicita
     if (delete_images) {
       business.imageUrls = [];
-    } else {
-      // Actualizar imágenes específicas
+    } else if (business.imageUrls) {
+      // Actualizar imágenes específicas solo si imageUrls no es nulo
       const updatedImages = [...business.imageUrls]; // Copia las imágenes existentes
       const newImages = [image1, image2, image3, image4, image5];
       newImages.forEach((url, index) => {
@@ -182,6 +182,25 @@ export class BusinessesService {
         }
       });
       business.imageUrls = updatedImages;
+    }
+
+    // Validar y transformar los `paymentMethods` si se pasan en la actualización
+    if (businessData.paymentMethods) {
+      if (typeof businessData.paymentMethods === 'string') {
+        try {
+          const parsedPaymentMethods = (businessData.paymentMethods as string)
+            .replace(/[\[\]']/g, '') // Remover corchetes y comillas simples
+            .split(',')
+            .map((method) => method.trim());
+          business.paymentMethods = parsedPaymentMethods;
+        } catch {
+          throw new Error('Formato inválido para paymentMethods. Debe ser un array o cadena en formato [item1, item2].');
+        }
+      } else if (Array.isArray(businessData.paymentMethods)) {
+        business.paymentMethods = businessData.paymentMethods;
+      } else {
+        throw new Error('Formato inválido para paymentMethods. Debe ser un array o cadena en formato [item1, item2].');
+      }
     }
 
     // Filtrar solo las propiedades con valores válidos y aplicarlas
@@ -201,6 +220,7 @@ export class BusinessesService {
       data: updatedBusiness,
     };
   }
+
 
 
 
