@@ -62,17 +62,14 @@ export class BusinessesService {
   }
 
   async findAll(): Promise<{ message: string; data: Business[] }> {
-    // // Obtener la URL base desde el archivo .env
-    // const baseUrl = this.configService.get<string>('API_BASE_URL');
-
     // Obtener todos los negocios
     const businesses = await this.businessesRepository.find();
 
-    // Modificar las URLs relativas a completas
+    // Modificar las URLs relativas a completas y manejar casos de valores nulos
     const sanitizedBusinesses = businesses.map((business) => ({
       ...business,
-      logoUrl: `${business.logoUrl}`, // Concatenar dominio base
-      imageUrls: business.imageUrls.map((url) => `${url}`), // Procesar array de imágenes
+      logoUrl: business.logoUrl ? `${business.logoUrl}` : null, // Manejar caso nulo
+      imageUrls: business.imageUrls ? business.imageUrls.map((url) => `${url}`) : [], // Manejar caso nulo o vacío
     }));
 
     return {
@@ -80,7 +77,6 @@ export class BusinessesService {
       data: sanitizedBusinesses,
     };
   }
-
 
   async findOne(id: number): Promise<Business | null> {
     if (!id || isNaN(Number(id))) {
