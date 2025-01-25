@@ -2,106 +2,53 @@ import {
   Body,
   Controller,
   Post,
-  UploadedFiles,
-  UseInterceptors,
-  BadRequestException,
-  Logger,
   Get,
   Put,
-  Param,
   Delete,
-  ParseIntPipe,
-  NotFoundException,
   Query,
+  Param,
+  ParseIntPipe,
+  BadRequestException,
+  NotFoundException,
+  UploadedFiles,
+  UseInterceptors,
+  Logger,
 } from '@nestjs/common';
-import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
+import { BusinessesService } from './businesses.service';
+import { CsvImportService } from './csv-import.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
-import { BusinessesService } from './businesses.service'; // Importar el servicio
-import { plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
 import { UpdateBusinessDto } from './dto/update-business.dto';
-import { FastCreateBusinessDto } from './dto/fast-create-business-dto';
+import { plainToInstance } from 'class-transformer';
+import { validate, ValidationError } from 'class-validator';
 
 @Controller('businesses')
-@UseInterceptors(FileInterceptor(''))//habilita la recepción de datos como FormData para todas las rutas!
 export class BusinessesController {
   private readonly logger = new Logger(BusinessesController.name);
 
-  constructor(private readonly businessService: BusinessesService) { } // Inyección del servicio
+  constructor(
+    private readonly businessesService: BusinessesService,
+    private readonly csvImportService: CsvImportService // Inyección del servicio
+  ) { }
 
   @Post('create')
-  @UseInterceptors(
-    AnyFilesInterceptor({
-      storage: null, // El servicio maneja los archivos
-    }),
-  )
-  async createBusiness(
-    @UploadedFiles() files: Express.Multer.File[],
-    @Body() body: any, // Recibimos los datos del formulario
-  ) {
+  async create(@Body() body: any) {
     try {
-      // Convertimos y validamos los datos del formulario
       const dto = plainToInstance(CreateBusinessDto, body);
       const errors = await validate(dto);
 
       if (errors.length > 0) {
-        throw new BadRequestException(errors);
+        this.logger.error('Errores de validación', JSON.stringify(errors));
+        // Lanzar excepción con detalles claros de validación
+        throw new BadRequestException({
+          success: false,
+          statusCode: 400,
+          message: 'Validation failed',
+          errors: this.formatValidationErrors(errors), // Detalles de validación
+        });
       }
 
-      // Preparar las imágenes en un formato adecuado para el servicio
-      const processedFiles = {};
-      files.forEach((file) => {
-        if (!processedFiles[file.fieldname]) {
-          processedFiles[file.fieldname] = [];
-        }
-        processedFiles[file.fieldname].push(file);
-      });
-
-      // Llamar al servicio para manejar la lógica
-      const business = await this.businessService.create(dto, processedFiles);
-
-      return {
-        message: 'Business created successfully!',
-        data: business,
-      };
-    } catch (error) {
-      this.logger.error('Error processing request', error.stack);
-      throw new BadRequestException(error.message || 'File upload failed');
-    }
-  }
-
-  @Get('find-all')
-  async findAll() {
-    return this.businessService.findAll();
-  }
-
-  @Get()
-  async findOne(@Query('id', ParseIntPipe) id: number) {
-    const business = await this.businessService.findOne(id);
-
-    if (!business) {
-      throw new NotFoundException(`Negocio con ID ${id} no encontrado.`);
-    }
-
-    return {
-      success: true,
-      message: 'Negocio encontrado correctamente.',
-      data: business,
-    };
-  }
-
-
-  @Delete(':id')
-  async remove(@Param('id') id: number) {
-    return this.businessService.delete(id);
-  }
-
-  @Post('fast-create')
-  async fastCreate(
-    @Body() fastCreateBusinessDto: FastCreateBusinessDto,
-  ) {
-    try {
-      const result = await this.businessService.fastCreate(fastCreateBusinessDto);
+      const result = await this.businessesService.create(dto);
 
       return {
         success: true,
@@ -109,18 +56,50 @@ export class BusinessesController {
         data: result.data,
       };
     } catch (error) {
-      throw new BadRequestException(error.message || 'Error al crear el negocio.');
+      this.logger.error('Error al procesar la solicitud de creación', error.stack);
+      // Lanzar un mensaje más genérico si no es un error de validación
+      throw new BadRequestException({
+        success: false,
+        statusCode: 400,
+        message: error.message || 'Error al crear el negocio.',
+        error: error.response?.errors || 'Unknown error', // Detalles del error o un mensaje genérico
+      });
     }
   }
 
-  // Fast-update
-  @Put('fast-update/:id')
-  async fastUpdate(
+  private formatValidationErrors(errors: ValidationError[]): any[] {
+    return errors.map((error) => ({
+      property: error.property, // Campo que falló la validación
+      constraints: error.constraints, // Restricciones fallidas
+      value: error.value, // Valor enviado que es inválido
+    }));
+  }
+
+
+
+  @Put('update/:id')
+  async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateBusinessDto: UpdateBusinessDto,
+    @Body() body: any,
   ) {
     try {
-      const result = await this.businessService.fastUpdate(id, updateBusinessDto);
+      // Convertir y validar el DTO
+      const dto = plainToInstance(UpdateBusinessDto, body);
+      const errors = await validate(dto);
+
+      if (errors.length > 0) {
+        this.logger.error('Errores de validación', JSON.stringify(errors));
+        // Lanzar una excepción con detalles claros
+        throw new BadRequestException({
+          success: false,
+          statusCode: 400,
+          message: 'Validation failed',
+          errors: this.formatValidationErrors(errors), // Detalles de validación
+        });
+      }
+
+      // Llamar al servicio para manejar la lógica de actualización
+      const result = await this.businessesService.update(id, dto);
 
       return {
         success: true,
@@ -128,12 +107,77 @@ export class BusinessesController {
         data: result.data,
       };
     } catch (error) {
-      if (error.message === 'Negocio no encontrado.') {
-        throw new NotFoundException(error.message);
-      }
-      throw new BadRequestException(error.message || 'Error al actualizar el negocio.');
+      this.logger.error('Error al procesar la solicitud de actualización', error.stack);
+      // Manejo de errores
+      throw new BadRequestException({
+        success: false,
+        statusCode: 400,
+        message: error.message || 'Error al actualizar el negocio.',
+        error: error.response?.errors || 'Unknown error', // Detalles adicionales si existen
+      });
     }
   }
 
+  @Get('find-all')
+  async findAll() {
+    try {
+      const result = await this.businessesService.findAll();
+      return result;
+    } catch (error) {
+      this.logger.error('Error al obtener la lista de negocios', error.stack);
+      throw new BadRequestException(error.message || 'Error al obtener negocios.');
+    }
+  }
 
+  @Get(':id')
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    try {
+      const business = await this.businessesService.findOne(id);
+
+      if (!business) {
+        throw new NotFoundException(`Negocio con ID ${id} no encontrado.`);
+      }
+
+      return {
+        success: true,
+        message: 'Negocio encontrado correctamente.',
+        data: business,
+      };
+    } catch (error) {
+      this.logger.error('Error al obtener el negocio', error.stack);
+      throw new BadRequestException(error.message || 'Error al obtener el negocio.');
+    }
+  }
+
+  @Delete(':id')
+  async delete(@Param('id', ParseIntPipe) id: number) {
+    try {
+      const result = await this.businessesService.delete(id);
+
+      return {
+        success: true,
+        message: 'Negocio eliminado exitosamente.',
+        data: result,
+      };
+    } catch (error) {
+      this.logger.error('Error al eliminar el negocio', error.stack);
+      throw new BadRequestException(error.message || 'Error al eliminar el negocio.');
+    }
+  }
+
+  @Post('import-static-csv')
+  async importStaticCsv() {
+    try {
+      const filePath = 'business-data.csv'; // Ruta fija para el archivo CSV
+      await this.csvImportService.importCsv(filePath);
+
+      return {
+        success: true,
+        message: 'El archivo CSV ha sido procesado exitosamente.',
+      };
+    } catch (error) {
+      this.logger.error('Error al procesar el archivo CSV', error.stack);
+      throw new BadRequestException('Error al procesar el archivo CSV.');
+    }
+  }
 }

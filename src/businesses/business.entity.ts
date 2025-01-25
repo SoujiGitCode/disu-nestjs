@@ -15,7 +15,7 @@ export class Business {
     slang?: string;
 
     @Column({ type: 'varchar', length: 100, nullable: true })
-    industry?: string; // Rubro en inglés
+    industry?: string;
 
     @Column({ type: 'text', nullable: true })
     address?: string;
@@ -24,24 +24,41 @@ export class Business {
     discount?: number;
 
     @Column({ type: 'simple-array', nullable: true })
-    paymentMethods?: string[]; // Array para los métodos de pago
+    paymentMethods?: string[]; // Métodos de pago como array simple
 
     @Column({ type: 'varchar', length: 255, nullable: true })
-    notificationsEmailAddress?: string; // Email para notificaciones opcional
+    notificationsEmailAddress?: string;
+
+    @Column({
+        type: 'varchar',
+        length: 20,
+        default: 'active',
+    })
+    status: 'active' | 'inactive' | 'suspended'; // Posibles valores de estado
+
+    @Column({ type: 'int', nullable: true })
+    ranking?: number;
 
     @Column({ type: 'varchar', length: 255, nullable: true })
-    logoUrl?: string; // URL del logo del negocio
+    logo?: string; // Cambiado de logoUrl a logo
 
-    @Column({ type: 'simple-array', nullable: true })
-    imageUrls?: string[]; // Array de URLs para las imágenes adicionales
+    @Column({ type: 'jsonb', nullable: true })
+    images?: {
+        image1?: string;
+        image2?: string;
+        image3?: string;
+        image4?: string;
+        instagram?: string;
+    };
 
-    @Column({ type: 'time', nullable: true })
-    openingHour?: string; // Hora de apertura
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    googleMapsUrl?: string;
 
-    @Column({ type: 'time', nullable: true })
-    closingHour?: string; // Hora de cierre
-
-    @Column({ type: 'simple-array', nullable: true })
-    openingDays?: string[]; // Array para los días de apertura
-
+    @Column({ type: 'jsonb', nullable: true })
+    weeklySchedule?: Array<{
+        day: string;
+        status: string;
+        openingHour: string | null;
+        closingHour: string | null;
+    }>; // JSON con horarios semanales
 }

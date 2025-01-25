@@ -8,8 +8,6 @@ import { CreateBusinessDto } from './dto/create-business.dto';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { ConfigService } from '@nestjs/config';
 import { validate } from 'class-validator';
-import { FastCreateBusinessDto } from './dto/fast-create-business-dto';
-
 @Injectable()
 export class BusinessesService {
   private readonly uploadsDir = process.env.UPLOADS_DIR || './uploads';
@@ -20,56 +18,68 @@ export class BusinessesService {
     private readonly configService: ConfigService, // Inyecta ConfigService
   ) { }
 
+  async create(createBusinessDto: CreateBusinessDto): Promise<{ success: boolean; message: string; data: Business }> {
+    const { images, weeklySchedule, ...businessData } = createBusinessDto;
 
-  async create(createBusinessDto: CreateBusinessDto, files: any): Promise<Business> {
-    // Crear el negocio con datos básicos
+    // Crear un negocio con datos proporcionados o inicializar valores predeterminados
     const business = this.businessesRepository.create({
-      ...createBusinessDto,
-      logoUrl: null,
-      imageUrls: [],
+      ...businessData,
+      logo: createBusinessDto.logo || null,
+      images: images || {
+        image1: null,
+        image2: null,
+        image3: null,
+        image4: null,
+        instagram: null,
+      },
+      weeklySchedule: weeklySchedule || [
+        { day: 'Monday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Tuesday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Wednesday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Thursday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Friday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Saturday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Sunday', status: 'disabled', openingHour: null, closingHour: null },
+      ],
     });
 
+    // Guardar el negocio en la base de datos
     const savedBusiness = await this.businessesRepository.save(business);
-    const businessId = savedBusiness.id.toString();
 
-    // Crear directorios para logo e imágenes
-    const logoDir = path.join(this.uploadsDir, 'businesses_logos', businessId);
-    const imagesDir = path.join(this.uploadsDir, 'businesses_images', businessId);
-    [logoDir, imagesDir].forEach((dir) => {
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    });
-
-    // Procesar y guardar el logo si está presente
-    if (files?.logo?.[0]) {
-      const logoPath = path.join(logoDir, 'logo.png');
-      fs.writeFileSync(logoPath, files.logo[0].buffer); // Guardar el buffer del archivo
-      savedBusiness.logoUrl = `/uploads/businesses_logos/${businessId}/logo.png`;
-    }
-
-    // Procesar y guardar imágenes adicionales si están presentes
-    const imageUrls = [];
-    ['image1', 'image2', 'image3', 'image4', 'image5'].forEach((field, index) => {
-      if (files?.[field]?.[0]) {
-        const imagePath = path.join(imagesDir, `${index + 1}.jpg`);
-        fs.writeFileSync(imagePath, files[field][0].buffer);
-        imageUrls.push(`/uploads/businesses_images/${businessId}/${index + 1}.jpg`);
-      }
-    });
-    savedBusiness.imageUrls = imageUrls;
-
-    // Guardar negocio actualizado con las rutas de las imágenes
-    return this.businessesRepository.save(savedBusiness);
+    // Devolver una respuesta clara
+    return {
+      success: true,
+      message: 'Negocio creado exitosamente.',
+      data: savedBusiness, // savedBusiness incluye el id y campos generados por la DB
+    };
   }
+
 
   async findAll(): Promise<{ message: string; data: Business[] }> {
     // Obtener todos los negocios
     const businesses = await this.businessesRepository.find();
 
-    // Modificar las URLs relativas a completas y manejar casos de valores nulos
+    // Sanitizar y manejar valores nulos
     const sanitizedBusinesses = businesses.map((business) => ({
       ...business,
-      logoUrl: business.logoUrl ? `${business.logoUrl}` : null, // Manejar caso nulo
-      imageUrls: business.imageUrls ? business.imageUrls.map((url) => `${url}`) : [], // Manejar caso nulo o vacío
+      logo: business.logo || null, // Si logo es nulo, mantenerlo como null
+      images: business.images || {
+        image1: null,
+        image2: null,
+        image3: null,
+        image4: null,
+        instagram: null,
+      }, // Inicializar un objeto vacío de imágenes si es null
+      weeklySchedule: business.weeklySchedule || [
+        { day: 'Monday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Tuesday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Wednesday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Thursday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Friday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Saturday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Sunday', status: 'disabled', openingHour: null, closingHour: null },
+      ], // Inicializar horarios si es null
+      googleMapsUrl: business.googleMapsUrl || null, // Si Google Maps URL es nulo, mantenerlo como null
     }));
 
     return {
@@ -78,41 +88,160 @@ export class BusinessesService {
     };
   }
 
+
   async findOne(id: number): Promise<Business | null> {
     if (!id || isNaN(Number(id))) {
       throw new Error(`ID inválido recibido en findOne: ${id}`);
     }
 
-    return this.businessesRepository.findOne({ where: { id } });
+    const business = await this.businessesRepository.findOne({ where: { id } });
+
+    if (!business) {
+      return null;
+    }
+
+    // Sanitizar el negocio encontrado
+    return {
+      ...business,
+      logo: business.logo || null,
+      images: business.images || {
+        image1: null,
+        image2: null,
+        image3: null,
+        image4: null,
+        instagram: null,
+      },
+      weeklySchedule: business.weeklySchedule || [
+        { day: 'Monday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Tuesday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Wednesday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Thursday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Friday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Saturday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Sunday', status: 'disabled', openingHour: null, closingHour: null },
+      ],
+      googleMapsUrl: business.googleMapsUrl || null,
+    };
   }
 
 
-  async update(id: number, updateBusinessDto: UpdateBusinessDto): Promise<Business> {
+  async update(
+    id: number,
+    updateBusinessDto: UpdateBusinessDto,
+  ): Promise<{ success: boolean; message: string; data: Business }> {
     const business = await this.findOne(id);
 
-    const updatedFields = Object.entries(updateBusinessDto).reduce((acc, [key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        acc[key] = value;
-      }
-      return acc;
-    }, {});
+    if (!business) {
+      throw new NotFoundException('Business not found');
+    }
 
-    Object.assign(business, updatedFields);
+    // Manejar eliminación de horario semanal
+    if (updateBusinessDto.delete_schedule) {
+      business.weeklySchedule = [
+        { day: 'Monday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Tuesday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Wednesday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Thursday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Friday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Saturday', status: 'disabled', openingHour: null, closingHour: null },
+        { day: 'Sunday', status: 'disabled', openingHour: null, closingHour: null },
+      ];
+    }
 
-    // Validar la entidad después de actualizarla
-    const errors = await validate(business);
-    if (errors.length > 0) {
-      throw new BadRequestException({
-        message: 'Validation failed',
-        errors: errors.map((err) => ({
-          property: err.property,
-          constraints: err.constraints,
-        })),
+    // Manejar actualización de weeklySchedule
+    if (updateBusinessDto.weeklySchedule) {
+      const updatedSchedule = [...(business.weeklySchedule || [])];
+
+      updateBusinessDto.weeklySchedule.forEach((newDay) => {
+        const existingDayIndex = updatedSchedule.findIndex(
+          (day) => day.day === newDay.day,
+        );
+
+        const defaultDay = {
+          status: 'disabled',
+          openingHour: null,
+          closingHour: null,
+        };
+
+        if (existingDayIndex !== -1) {
+          // Si el día ya existe, actualizarlo
+          updatedSchedule[existingDayIndex] = {
+            ...updatedSchedule[existingDayIndex],
+            ...newDay,
+            openingHour: newDay.openingHour ?? defaultDay.openingHour,
+            closingHour: newDay.closingHour ?? defaultDay.closingHour,
+          };
+        } else {
+          // Si no existe, agregarlo con valores predeterminados
+          updatedSchedule.push({
+            ...defaultDay,
+            ...newDay,
+            openingHour: newDay.openingHour ?? defaultDay.openingHour,
+            closingHour: newDay.closingHour ?? defaultDay.closingHour,
+          });
+        }
+      });
+
+      business.weeklySchedule = updatedSchedule;
+    }
+
+    // Manejar eliminación de logo
+    if (updateBusinessDto.delete_logo) {
+      business.logo = null;
+    }
+
+    // Manejar eliminación de imágenes
+    if (updateBusinessDto.delete_images) {
+      business.images = {
+        image1: null,
+        image2: null,
+        image3: null,
+        image4: null,
+        instagram: null,
+      };
+    }
+
+    // Manejar actualización de imágenes (sin sobreescribir el objeto completo)
+    if (updateBusinessDto.images) {
+      business.images = {
+        ...(business.images || {
+          image1: null,
+          image2: null,
+          image3: null,
+          image4: null,
+          instagram: null,
+        }),
+        ...updateBusinessDto.images, // Actualizar solo las propiedades enviadas
+      };
+    }
+
+    // Actualizar otros campos (sin afectar weeklySchedule e imágenes directamente)
+    const { weeklySchedule, delete_schedule, delete_logo, delete_images, images, ...otherFields } = updateBusinessDto;
+    Object.assign(business, otherFields);
+
+    // Guardar los cambios
+    const updatedBusiness = await this.businessesRepository.save(business);
+
+    // Reordenar las propiedades de cada día en weeklySchedule (si existe)
+    if (updatedBusiness.weeklySchedule) {
+      updatedBusiness.weeklySchedule = updatedBusiness.weeklySchedule.map((schedule) => {
+        const { day, ...rest } = schedule;
+        return { day, ...rest }; // Asegura que 'day' sea la primera propiedad
       });
     }
 
-    return this.businessesRepository.save(business);
+    // Retornar la respuesta en el formato requerido
+    return {
+      success: true,
+      message: 'Negocio actualizado exitosamente.',
+      data: {
+        ...updatedBusiness,
+        weeklySchedule: updatedBusiness.weeklySchedule || [], // Asegurar que siempre sea un array
+        images: updatedBusiness.images || {}, // Asegurar que siempre sea un objeto
+      },
+    };
   }
+
 
   async delete(id: number): Promise<{ success: boolean; message: string }> {
     const business = await this.findOne(id); // Verificar si el negocio existe
@@ -128,99 +257,6 @@ export class BusinessesService {
       message: 'Negocio eliminado exitosamente.',
     };
   }
-
-  async fastCreate(createBusinessDto: FastCreateBusinessDto): Promise<{ success: boolean; message: string; data: Business }> {
-    const { image1, image2, image3, image4, image5, ...businessData } = createBusinessDto;
-
-    // Crear un negocio con los datos proporcionados
-    const business = this.businessesRepository.create({
-      ...businessData,
-      logoUrl: createBusinessDto.logo || null,
-      imageUrls: [image1, image2, image3, image4, image5].filter((url) => url !== undefined), // Filtrar imágenes definidas
-    });
-
-    // Guardar el negocio en la base de datos
-    const savedBusiness = await this.businessesRepository.save(business);
-
-    // Devolver una respuesta clara
-    return {
-      success: true,
-      message: 'Negocio creado exitosamente.',
-      data: savedBusiness,
-    };
-  }
-
-
-  async fastUpdate(
-    id: number,
-    updateBusinessDto: UpdateBusinessDto,
-  ): Promise<{ success: boolean; message: string; data: Business }> {
-    const { delete_logo, delete_images, image1, image2, image3, image4, image5, ...businessData } = updateBusinessDto;
-
-    // Buscar el negocio existente
-    const business = await this.findOne(id);
-
-    if (!business) {
-      throw new Error('Negocio no encontrado.');
-    }
-
-    // Limpiar logo si se solicita
-    if (delete_logo) {
-      business.logoUrl = null;
-    }
-
-    // Limpiar imágenes si se solicita
-    if (delete_images) {
-      business.imageUrls = [];
-    } else if (business.imageUrls) {
-      // Actualizar imágenes específicas solo si imageUrls no es nulo
-      const updatedImages = [...business.imageUrls]; // Copia las imágenes existentes
-      const newImages = [image1, image2, image3, image4, image5];
-      newImages.forEach((url, index) => {
-        if (url !== undefined && url !== null && url !== '') {
-          updatedImages[index] = url; // Actualiza solo los índices específicos
-        }
-      });
-      business.imageUrls = updatedImages;
-    }
-
-    // Validar y transformar los `paymentMethods` si se pasan en la actualización
-    if (businessData.paymentMethods) {
-      if (typeof businessData.paymentMethods === 'string') {
-        try {
-          const parsedPaymentMethods = (businessData.paymentMethods as string)
-            .replace(/[\[\]']/g, '') // Remover corchetes y comillas simples
-            .split(',')
-            .map((method) => method.trim());
-          business.paymentMethods = parsedPaymentMethods;
-        } catch {
-          throw new Error('Formato inválido para paymentMethods. Debe ser un array o cadena en formato [item1, item2].');
-        }
-      } else if (Array.isArray(businessData.paymentMethods)) {
-        business.paymentMethods = businessData.paymentMethods;
-      } else {
-        throw new Error('Formato inválido para paymentMethods. Debe ser un array o cadena en formato [item1, item2].');
-      }
-    }
-
-    // Filtrar solo las propiedades con valores válidos y aplicarlas
-    Object.entries(businessData).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        business[key] = value;
-      }
-    });
-
-    // Guardar los cambios
-    const updatedBusiness = await this.businessesRepository.save(business);
-
-    // Devolver la respuesta
-    return {
-      success: true,
-      message: 'Negocio actualizado exitosamente.',
-      data: updatedBusiness,
-    };
-  }
-
 
 
 

@@ -1,10 +1,9 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { FastCreateBusinessDto } from './fast-create-business-dto';
+import { CreateBusinessDto } from './create-business.dto';
 import { IsBoolean, IsOptional } from 'class-validator';
 import { Transform } from 'class-transformer';
 
-export class UpdateBusinessDto extends PartialType(FastCreateBusinessDto) {
-    // Campos para limpiar logo e imágenes, transformados a boolean
+export class UpdateBusinessDto extends PartialType(CreateBusinessDto) {
     @IsOptional()
     @Transform(({ value }) => value?.toLowerCase() === 'true')
     @IsBoolean()
@@ -14,4 +13,10 @@ export class UpdateBusinessDto extends PartialType(FastCreateBusinessDto) {
     @Transform(({ value }) => value?.toLowerCase() === 'true')
     @IsBoolean()
     delete_images?: boolean;
+
+    // Nuevo campo para borrar el schedule
+    @IsOptional()
+    @Transform(({ value }) => value?.toLowerCase() === 'true')
+    @IsBoolean()
+    delete_schedule?: boolean;
 }

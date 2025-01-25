@@ -1,14 +1,33 @@
-import { Transform } from 'class-transformer';
 import {
-    IsString,
     IsOptional,
-    IsEmail,
-    IsNumber,
-    IsBase64,
+    IsString,
     MaxLength,
+    IsUrl,
+    IsNumber,
     Min,
     Max,
+    IsEmail,
+    IsArray,
+    ValidateNested,
+    IsIn,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+class WeeklyScheduleDto {
+    @IsString()
+    day: string;
+
+    @IsString()
+    status: string;
+
+    @IsOptional()
+    @IsString()
+    openingHour?: string;
+
+    @IsOptional()
+    @IsString()
+    closingHour?: string;
+}
 
 export class CreateBusinessDto {
     @IsString()
@@ -34,14 +53,14 @@ export class CreateBusinessDto {
     @IsString()
     address?: string;
 
-    @Transform(({ value }) => parseFloat(value)) // Convierte a número
+    @IsOptional()
     @IsNumber()
     @Min(0)
     @Max(100)
-    @IsOptional()
     discount?: number;
 
     @IsOptional()
+    @IsArray()
     @IsString({ each: true })
     paymentMethods?: string[];
 
@@ -50,27 +69,41 @@ export class CreateBusinessDto {
     notificationsEmailAddress?: string;
 
     @IsOptional()
-    // @IsBase64()
-    logo?: string; // Logo en formato base64
-
-    // Imágenes individuales (5 campos opcionales)
     @IsOptional()
-    // @IsBase64()
-    image1?: string;
+    @IsIn(['active', 'inactive', 'suspended'], {
+        message: 'Status must be one of the following values: active, inactive, or suspended',
+    })
+    status?: 'active' | 'inactive' | 'suspended'; // Validación para los valores permitidos
 
-    @IsOptional()
-    // @IsBase64()
-    image2?: string;
 
     @IsOptional()
-    // @IsBase64()
-    image3?: string;
+    @IsNumber()
+    ranking?: number;
 
     @IsOptional()
-    // @IsBase64()
-    image4?: string;
+    @IsString()
+    @IsUrl()
+    logo?: string;
 
     @IsOptional()
-    // @IsBase64()
-    image5?: string;
+    @ValidateNested()
+    @Type(() => Object)
+    images?: {
+        image1?: string;
+        image2?: string;
+        image3?: string;
+        image4?: string;
+        instagram?: string;
+    };
+
+    @IsOptional()
+    @IsString()
+    @IsUrl()
+    googleMapsUrl?: string;
+
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => WeeklyScheduleDto)
+    weeklySchedule?: WeeklyScheduleDto[];
 }
