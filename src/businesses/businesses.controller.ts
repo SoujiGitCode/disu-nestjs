@@ -5,16 +5,12 @@ import {
   Get,
   Put,
   Delete,
-  Query,
   Param,
   ParseIntPipe,
   BadRequestException,
   NotFoundException,
-  UploadedFiles,
-  UseInterceptors,
   Logger,
 } from '@nestjs/common';
-import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { BusinessesService } from './businesses.service';
 import { CsvImportService } from './csv-import.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
@@ -74,8 +70,6 @@ export class BusinessesController {
       value: error.value, // Valor enviado que es inválido
     }));
   }
-
-
 
   @Put('update/:id')
   async update(
@@ -149,7 +143,7 @@ export class BusinessesController {
     }
   }
 
-  @Delete(':id')
+  @Delete('delete/:id')
   async delete(@Param('id', ParseIntPipe) id: number) {
     try {
       const result = await this.businessesService.delete(id);

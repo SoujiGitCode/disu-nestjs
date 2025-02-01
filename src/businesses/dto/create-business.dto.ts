@@ -46,6 +46,11 @@ export class CreateBusinessDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(200)
+    description?: string;
+
+    @IsOptional()
+    @IsString()
     @MaxLength(100)
     industry?: string;
 

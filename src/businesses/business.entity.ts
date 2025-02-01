@@ -14,6 +14,9 @@ export class Business {
     @Column({ type: 'varchar', length: 50, nullable: true })
     slang?: string;
 
+    @Column({ type: 'varchar', length: 200, nullable: true })
+    description?: string;
+
     @Column({ type: 'varchar', length: 100, nullable: true })
     industry?: string;
 
