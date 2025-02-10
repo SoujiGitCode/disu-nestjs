@@ -1,16 +1,13 @@
-import { IsEmail, IsNotEmpty, IsString, IsDate, IsOptional, MinLength, Matches, isNotEmpty } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform } from 'class-transformer';
+import { IsDate, IsNotEmpty, IsString, IsOptional, IsEmail } from 'class-validator';
+import { parseISO, isValid } from 'date-fns';
 
 export class RegisterUserDto {
     @IsEmail()
     @IsNotEmpty()
     email: string;
 
-    @IsNotEmpty({ message: 'Password is required.' })
-    // @MinLength(8, { message: 'Password must be at least 8 characters long.' })
-    // @Matches(/(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#\$%\^&\*])/, {
-    //     message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
-    // })
+    @IsNotEmpty()
     password: string;
 
     @IsString()
@@ -21,13 +18,27 @@ export class RegisterUserDto {
 
     @IsNotEmpty()
     @IsDate()
-    @Type(() => Date) // Transforma el valor a un tipo Date
+    @Transform(({ value }) => {
+        if (!value) return null;
+
+        try {
+            // Parsear fecha ISO (YYYY-MM-DD)
+            const parsedDate = parseISO(value);
+            if (!isValid(parsedDate)) {
+                throw new Error('Invalid date format. Expected YYYY-MM-DD.');
+            }
+            return parsedDate;
+        } catch (error) {
+            console.log(error)
+            throw new Error('Invalid date format. Expected YYYY-MM-DD.');
+        }
+    })
     birthdate: Date;
 
     @IsOptional()
     @IsString()
-    gender: string; // No validamos aquí los valores específicos, se hará en el servicio
+    gender: string;
 
     @IsOptional()
-    role: number; // Esto es el ID del rol; asumimos que se valida en el servicio
+    role: number;
 }

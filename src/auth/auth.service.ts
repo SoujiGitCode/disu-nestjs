@@ -104,7 +104,7 @@ export class AuthService {
             const newUser = this.userRepository.create({
                 email,
                 password: hashedPassword,
-                birthdate: format(new Date(birthdate), 'dd-MM-yyyy'),
+                birthdate,
                 gender: gender || Gender.INDEFINIDO,
                 role: roleEntity,
                 status: UserStatus.PENDING,
@@ -125,7 +125,7 @@ export class AuthService {
                 data: {
                     id: savedUser.id,
                     email: savedUser.email,
-                    birthdate: format(new Date(savedUser.birthdate), 'dd-MM-yyyy'), // Formato de fecha ajustado
+                    birthdate: format(new Date(savedUser.birthdate), 'yyyy-MM-dd'), // Formato de fecha ajustado
                     name: savedUser.name,
                     lastName: savedUser.lastName,
                     gender: savedUser.gender,
