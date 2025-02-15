@@ -12,13 +12,15 @@ export class MailService {
         this.fromEmail = this.configService.get<string>('SENDGRID_FROM_EMAIL');
     }
 
-    async sendOtpEmail(to: string, otp: string): Promise<void> {
+    async sendOtpEmail(to: string, otp: string, name: string): Promise<void> {
         const msg = {
             to,
             from: this.fromEmail,
-            subject: 'Your OTP Code',
-            text: `Your OTP code is: ${otp}`,
-            html: `<strong>Your OTP code is: ${otp}</strong>`,
+            templateId: 'd-52aa3b3ce5d847cf9a1e2603e2e933b3',
+            dynamic_template_data: {
+                name,
+                otp_code: otp
+            }
         };
 
         try {
@@ -32,6 +34,7 @@ export class MailService {
             throw error;
         }
     }
+
 
     async sendRecoveryEmail(email: string, token: string): Promise<void> {
         const msg = {

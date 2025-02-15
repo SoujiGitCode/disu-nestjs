@@ -61,7 +61,7 @@ export class AuthService {
 
         // Enviar OTP al correo electrónico
         try {
-            await this.mailService.sendOtpEmail(user.email, otpCode);
+            await this.mailService.sendOtpEmail(user.email, otpCode, user.name);
         } catch (error) {
             console.log(error)
             throw new BadRequestException('No se pudo enviar OTP. Por favor inténtalo de nuevo más tarde.');
@@ -117,7 +117,7 @@ export class AuthService {
             const savedUser = await this.userRepository.save(newUser);
 
             // Enviar correo con OTP
-            await this.mailService.sendOtpEmail(email, otpCode);
+            await this.mailService.sendOtpEmail(email, otpCode, name);
 
             // Transformar el formato de la fecha antes de devolverla en la respuesta
             return {
@@ -234,7 +234,7 @@ export class AuthService {
         await this.userRepository.save(user);
 
         // Enviar el OTP por correo electrónico
-        await this.mailService.sendOtpEmail(user.email, otpCode);
+        await this.mailService.sendOtpEmail(user.email, otpCode, user.name);
 
         return {
             message: 'Se ha enviado un correo electrónico de recuperación. Por favor revisa tu bandeja de entrada.',
