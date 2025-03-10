@@ -5,8 +5,10 @@ import {
     ManyToOne,
     CreateDateColumn,
     UpdateDateColumn,
+    OneToMany,
 } from 'typeorm';
 import { Role } from 'src/roles/role.entity';
+import { Transaction } from '@src/transactions/transaction.entity';
 
 export enum UserStatus {
     PENDING = 'pendiente',
@@ -58,6 +60,9 @@ export class User {
 
     @ManyToOne(() => Role, (role) => role.users) // Relación muchos a uno: muchos usuarios, un solo rol
     role: Role;
+
+    @OneToMany(() => Transaction, (transaction) => transaction.user)
+    transactions: Transaction[];
 
     @Column({ nullable: true })
     otpCode: string;

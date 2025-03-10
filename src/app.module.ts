@@ -14,6 +14,7 @@ import { BusinessesModule } from './businesses/businesses.module';
 import { LoggerMiddleware } from './middleware/logger.middleware';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { TransactionsModule } from './transactions/transactions.module';
 
 @Module({
   imports: [
@@ -40,7 +41,8 @@ import { join } from 'path';
     MailModule, // MailModule
     AuthModule, // AuthModule
     UsersModule, // UsersModule
-    BusinessesModule,
+    BusinessesModule,  // BusinessesModule
+    TransactionsModule, // TransactionsModule
   ],
   controllers: [AppController], //controladores
   providers: [AppService], // providers

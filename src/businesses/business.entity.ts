@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Transaction } from '@src/transactions/transaction.entity';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 
 @Entity('businesses')
 export class Business {
@@ -64,4 +65,8 @@ export class Business {
         openingHour: string | null;
         closingHour: string | null;
     }>; // JSON con horarios semanales
+
+    @OneToMany(() => Transaction, (transaction) => transaction.business)
+    transactions: Transaction[];
+
 }
