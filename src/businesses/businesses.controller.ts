@@ -10,6 +10,7 @@ import {
   BadRequestException,
   NotFoundException,
   Logger,
+  Query,
 } from '@nestjs/common';
 import { BusinessesService } from './businesses.service';
 import { CsvImportService } from './csv-import.service';
@@ -113,10 +114,13 @@ export class BusinessesController {
   }
 
   @Get('find-all')
-  async findAll() {
+  async findAll(@Query('getAllData') getAllData?: string) {
     try {
-      const result = await this.businessesService.findAll();
-      return result;
+      // Convertir `getAllData` a booleano (NestJS lo recibe como string)
+      const includeAllData = getAllData === 'true';
+
+      // Llamar al servicio y pasar el booleano
+      return await this.businessesService.findAll(includeAllData);
     } catch (error) {
       this.logger.error('Error al obtener la lista de negocios', error.stack);
       throw new BadRequestException(error.message || 'Error al obtener negocios.');
