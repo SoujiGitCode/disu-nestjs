@@ -52,38 +52,36 @@ export class BusinessesService {
   }
 
 
-  async findAll(): Promise<{ message: string; data: Business[] }> {
-    // Obtener todos los negocios
-    const businesses = await this.businessesRepository.find();
+  async findAll(getAllData?: boolean): Promise<{ message: string; data: Partial<Business>[] }> {
+    // Obtener todos los negocios ordenados por ID ascendente
+    const businesses = await this.businessesRepository.find({
+      order: { id: 'ASC' }, // Ordenar por ID ascendente
+    });
 
-    // Sanitizar y manejar valores nulos
-    const sanitizedBusinesses = businesses.map((business) => ({
-      ...business,
-      logo: business.logo || null, // Si logo es nulo, mantenerlo como null
-      images: business.images || {
-        image1: null,
-        image2: null,
-        image3: null,
-        image4: null,
-        instagram: null,
-      }, // Inicializar un objeto vacío de imágenes si es null
-      weeklySchedule: business.weeklySchedule || [
-        { day: 'Monday', status: 'disabled', openingHour: null, closingHour: null },
-        { day: 'Tuesday', status: 'disabled', openingHour: null, closingHour: null },
-        { day: 'Wednesday', status: 'disabled', openingHour: null, closingHour: null },
-        { day: 'Thursday', status: 'disabled', openingHour: null, closingHour: null },
-        { day: 'Friday', status: 'disabled', openingHour: null, closingHour: null },
-        { day: 'Saturday', status: 'disabled', openingHour: null, closingHour: null },
-        { day: 'Sunday', status: 'disabled', openingHour: null, closingHour: null },
-      ], // Inicializar horarios si es null
-      googleMapsUrl: business.googleMapsUrl || null, // Si Google Maps URL es nulo, mantenerlo como null
-    }));
+    // Filtrar los datos de cada negocio dependiendo de `getAllData`
+    const sanitizedBusinesses = businesses.map((business) => {
+      if (getAllData) {
+        return { ...business }; // Devuelve todo si `getAllData` es `true`
+      }
+
+      // Devuelve solo los campos específicos si `getAllData` no está presente o es `false`
+      return {
+        id: business.id,
+        name: business.name,
+        representative: business.representative,
+        address: business.address,
+        discount: business.discount,
+        status: business.status,
+        logo: business.logo || null, // Si logo es nulo, mantenerlo como null
+      };
+    });
 
     return {
       message: 'Lista de negocios obtenida correctamente.',
       data: sanitizedBusinesses,
     };
   }
+
 
 
   async findOne(id: number): Promise<Business | null> {
