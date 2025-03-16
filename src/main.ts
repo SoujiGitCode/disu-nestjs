@@ -31,6 +31,14 @@ async function bootstrap() {
     transform: true, // Transforma los tipos de los datos recibidos según el DTO
   }));
 
+  // Habilitar CORS para permitir solicitudes desde el frontend
+  app.enableCors({
+    origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    allowedHeaders: 'Content-Type, Authorization',
+  });
+
+
   await app.listen(4000);
 }
 bootstrap();
