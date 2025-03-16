@@ -273,7 +273,6 @@ export class AuthService {
             message: 'La contraseña se ha restablecido correctamente.',
         };
     }
-
     // Método para verificar si un usuario existe
     async checkUserExists(email: string): Promise<{ message: string; data?: any }> {
         const user = await this.userRepository.findOne({ where: { email } });
@@ -283,6 +282,7 @@ export class AuthService {
                 message: 'Usuario ya registrado.',
                 data: {
                     exists: true,
+                    user, // Retorna toda la data del usuario
                 },
             };
         } else {
@@ -294,4 +294,5 @@ export class AuthService {
             };
         }
     }
+
 }
