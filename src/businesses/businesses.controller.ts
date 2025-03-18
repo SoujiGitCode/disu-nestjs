@@ -114,13 +114,12 @@ export class BusinessesController {
   }
 
   @Get('find-all')
-  async findAll(@Query('getAllData') getAllData?: string) {
+  async findAll(@Query('getLessData') getLessData?: string) {
     try {
-      // Convertir `getAllData` a booleano (NestJS lo recibe como string)
-      const includeAllData = getAllData === 'true';
+      // Convertir el valor a booleano: si getLessData es 'true', será true; de lo contrario, false o undefined
+      const lessData = getLessData === 'true';
 
-      // Llamar al servicio y pasar el booleano
-      return await this.businessesService.findAll(includeAllData);
+      return await this.businessesService.findAll(lessData);
     } catch (error) {
       this.logger.error('Error al obtener la lista de negocios', error.stack);
       throw new BadRequestException(error.message || 'Error al obtener negocios.');

@@ -52,28 +52,26 @@ export class BusinessesService {
   }
 
 
-  async findAll(getAllData?: boolean): Promise<{ message: string; data: Partial<Business>[] }> {
+  async findAll(getLessData?: boolean): Promise<{ message: string; data: Partial<Business>[] }> {
     // Obtener todos los negocios ordenados por ID ascendente
     const businesses = await this.businessesRepository.find({
-      order: { id: 'ASC' }, // Ordenar por ID ascendente
+      order: { id: 'ASC' },
     });
 
-    // Filtrar los datos de cada negocio dependiendo de `getAllData`
+    // Si getLessData es true, devuelve solo los campos básicos; si es false o undefined, devuelve toda la data
     const sanitizedBusinesses = businesses.map((business) => {
-      if (getAllData) {
-        return { ...business }; // Devuelve todo si `getAllData` es `true`
+      if (getLessData) {
+        return {
+          id: business.id,
+          name: business.name,
+          representative: business.representative,
+          address: business.address,
+          discount: business.discount,
+          status: business.status,
+          logo: business.logo || null,
+        };
       }
-
-      // Devuelve solo los campos específicos si `getAllData` no está presente o es `false`
-      return {
-        id: business.id,
-        name: business.name,
-        representative: business.representative,
-        address: business.address,
-        discount: business.discount,
-        status: business.status,
-        logo: business.logo || null, // Si logo es nulo, mantenerlo como null
-      };
+      return { ...business };
     });
 
     return {
@@ -81,6 +79,7 @@ export class BusinessesService {
       data: sanitizedBusinesses,
     };
   }
+
 
 
 
