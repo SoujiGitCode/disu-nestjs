@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserStatus } from './user.entity';
@@ -93,5 +93,21 @@ export class UsersService {
             message: 'Usuario encontrado correctamente.',
             data: sanitizedUser,
         };
+    }
+
+    async migrateUsers(users: Partial<User>[]): Promise<{ success: boolean; message: string }> {
+        try {
+            await this.usersRepository.save(users);
+            return {
+                success: true,
+                message: `Migración completada. ${users.length} usuarios migrados.`,
+            };
+        } catch (error) {
+            console.log(error)
+            throw new BadRequestException({
+                success: false,
+                message: 'Error al guardar los usuarios en la base de datos.',
+            });
+        }
     }
 }
