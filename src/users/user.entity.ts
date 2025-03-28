@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Role } from 'src/roles/role.entity';
 import { Transaction } from '@src/transactions/transaction.entity';
+import { FirebaseToken } from '@src/firebase-token/firebase-token.entity';
 
 export enum UserStatus {
     PENDING = 'pendiente',
@@ -60,6 +61,9 @@ export class User {
 
     @ManyToOne(() => Role, (role) => role.users) // Relación muchos a uno: muchos usuarios, un solo rol
     role: Role;
+
+    @OneToMany(() => FirebaseToken, (token) => token.user)
+    firebaseTokens: FirebaseToken[];
 
     @OneToMany(() => Transaction, (transaction) => transaction.user)
     transactions: Transaction[];

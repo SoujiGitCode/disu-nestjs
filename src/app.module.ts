@@ -15,6 +15,7 @@ import { LoggerMiddleware } from './middleware/logger.middleware';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { TransactionsModule } from './transactions/transactions.module';
+import { FirebaseTokenModule } from './firebase-token/firebase-token.module';
 
 @Module({
   imports: [
@@ -42,7 +43,8 @@ import { TransactionsModule } from './transactions/transactions.module';
     AuthModule, // AuthModule
     UsersModule, // UsersModule
     BusinessesModule,  // BusinessesModule
-    TransactionsModule, // TransactionsModule
+    TransactionsModule,
+    FirebaseTokenModule, // TransactionsModule
   ],
   controllers: [AppController], //controladores
   providers: [AppService], // providers
